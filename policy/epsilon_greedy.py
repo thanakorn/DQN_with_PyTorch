@@ -16,5 +16,5 @@ class EpsilonGreedy(BasePolicy):
         if np.random.rand() < self.get_exploration_rate(current_step):
             random.choice(range(len(values)))
         else:
-            return np.argmax(values)
+            return values.argmax().item()
         
