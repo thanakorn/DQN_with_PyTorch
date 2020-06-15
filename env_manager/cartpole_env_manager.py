@@ -8,7 +8,7 @@ from PIL import Image
 class CartPoleEnvManager(object):
     def __init__(self, device):
         super().__init__()
-        self.env = env.make('CartPole-v0').unwrapped
+        self.env = gym.make('CartPole-v0').unwrapped
         self.env.reset()
         self.current_screen = None
         self.done = False
@@ -17,6 +17,7 @@ class CartPoleEnvManager(object):
     def reset(self):
         self.env.reset()
         self.current_screen = None
+        self.done = False
         
     def close(self):
         self.env.close()
@@ -41,12 +42,15 @@ class CartPoleEnvManager(object):
             return empty_screen
         else:
             s1 = self.current_screen
-            s2 = self.get_processes_screen()
+            s2 = self.get_processed_screen()
             self.current_screen = s2
-            return s1 - s2
+            return s2 - s1
+        
+    def get_img_dimensions(self):
+        return self.get_processed_screen().shape
         
     def get_processed_screen(self):
-        screen = self.render('rbg_array').transpose((2, 0, 1))
+        screen = self.render('rgb_array').transpose((2, 0, 1))
         screen = self.crop_screen(screen)
         return self.transform_screen(screen)
     
