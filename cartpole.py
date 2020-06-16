@@ -23,7 +23,7 @@ min_epsilon = 0.01
 epsilon_decay = 0.001
 target_update = 10
 memory_size = 100000
-lr = 0.001
+lr = 0.01
 num_episodes = 1000
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
@@ -57,32 +57,31 @@ plt.show()
 # %% Create instances
 env_manager = CartPoleEnvManager(device)
 policy = EpsilonGreedy(init_epsilon, min_epsilon, epsilon_decay)
-memory = ReplayMemory(memory_size)
+replay_memory = ReplayMemory(memory_size)
 _, _, img_height, img_width = env_manager.get_img_dimensions()
 policy_net = SimpleDQN(img_height, img_width, env_manager.num_actions()).to(device)
-agent = Agent(policy, env_manager.num_actions, policy_net, device)
+agent = Agent(policy, env_manager.num_actions, device)
 target_net = SimpleDQN(img_height, img_width, env_manager.num_actions()).to(device)
 target_net.load_state_dict(policy_net.state_dict())
 target_net.eval()
 optimizer = optim.Adam(policy_net.parameters(), lr)
 
 # %% Training
+policy_net.train()
 episode_durations = []
 for ep in range(num_episodes):
     env_manager.reset()
     state = env_manager.get_state()
     
     for timestep in count():
-        if ep % 100 == 0 : env_manager.render()
-        agent.policy_net = policy_net
-        action = agent.act(state)
-        reward = env_manager.take_action(action)
+        action = agent.act(state, policy_net)
+        reward = env_manager.take_action(action.item())
         next_state = env_manager.get_state()
-        memory.push(Experience(state, action, next_state, reward))
+        replay_memory.push(Experience(state, action, next_state, reward))
         state = next_state
-        
-        try:
-            experiences = memory.sample(batch_size)
+
+        if len(replay_memory.memory) >= batch_size:
+            experiences = replay_memory.sample(batch_size)
             states, actions, rewards, next_states = extract_experiences(experiences)
             q = policy_net(states).gather(dim=1, index=actions.unsqueeze(-1))
             q_next = get_q_next(target_net, next_states)
@@ -92,11 +91,7 @@ for ep in range(num_episodes):
             optimizer.zero_grad()
             loss.backward()
             optimizer.step()
-            
-        except Exception as ex:
-            ex
-            # print(ex)
-            
+
         if env_manager.done:
             episode_durations.append(timestep)
             plot(episode_durations, 100)
@@ -106,5 +101,3 @@ for ep in range(num_episodes):
         target_net.load_state_dict(policy_net.state_dict())
     
     env_manager.close()
-
-# %%

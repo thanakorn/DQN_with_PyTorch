@@ -1,4 +1,5 @@
 import torch
+from memory.replay_memory import Experience
 
 def extract_experiences(experiences):
     batch = Experience(*zip(*experiences))
@@ -12,8 +13,8 @@ def extract_experiences(experiences):
 
 def get_q_next(target_net, next_states):
     final_idx = next_states.flatten(start_dim=1).max(dim=1)[0].eq(0).type(torch.bool)
-    non_final_idx = (final_state_idx == False)
+    non_final_idx = (final_idx == False)
     non_final_states = next_states[non_final_idx]
-    values = torch.zeros(non_final_states.shape[0])
+    values = torch.zeros(next_states.shape[0])
     values[non_final_idx] = target_net(non_final_states).max(dim=1)[0]
     return values
